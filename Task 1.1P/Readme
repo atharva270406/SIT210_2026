@@ -1,0 +1,38 @@
+Task 1.1P
+Description:
+
+In this task, I developed a simple smart lighting system using an Arduino Nano 33 IoT,
+an external LED, a built-in LED, and a slider switch. 
+The system is designed such that when the slider switch is turned ON, both LEDs turn on simultaneously.
+However, the external LED turns off after 30 seconds, while the built-in LED remains on for 60 seconds before turning off.
+
+This simulates a basic smart assisted living scenario where devices operate for different durations automatically after activation.
+
+CODE OVERVIEW:
+The program uses digital input and output to control the LEDs based on the state of the slider switch. The switch is configured using INPUT_PULLUP, meaning it reads LOW when pressed.
+The main logic is implemented inside the loop() function, where the system checks if the switch is activated. When triggered, both LEDs are turned on at the same time. A delay of 30 seconds is used before turning off the external LED, followed by another 30-second delay before turning off the built-in LED.
+A boolean variable is used to ensure the sequence runs only once per switch activation. When the switch is turned OFF, the system resets and allows the sequence to run again when switched ON.
+This approach keeps the program simple while ensuring correct timing behaviour.
+
+Modular Programming Discussion:
+In this task, I applied modular programming by separating different parts of the system into logical sections instead of writing everything as a single block of code. For example, the setup() function is responsible only for initializing pin modes, while the loop() function handles the system behaviour.
+I also used a boolean variable to control whether the LED sequence has already been executed. This improves usability because it prevents the system from repeatedly running the same sequence while the switch remains ON.
+By structuring the program in this way, it becomes easier to understand, debug, and modify. For example, if I want to change the timing of the LEDs or add more components in the future, I can easily adjust specific parts of the program without affecting the entire system.
+
+Design Problems:
+From a design perspective, I noticed that the use of delay() introduces a limitation in the system. While the delays are running, the Arduino cannot respond to any new inputs, such as turning the switch OFF. This reduces the responsiveness of the system.
+Another issue is that the system depends on fixed timing, which may not be flexible for real-world applications. 
+For example, different users may require different durations for the lights.
+
+I did some research and found out that the delay() method stops the whole code fro particular time. Which means even when i turn the switch slider off, the system would not react to that.
+They i researched about its alternative and came across millis() method. Also had some discussions about delay() and millis() with our tutor.
+
+If I continue developing this into a smart assisted living system, there are a few modules I would like to add.
+First, I would add a motion sensor so that lights can turn on automatically when someone enters a room. 
+This would make the system more convenient and energy-efficient.
+
+Second, I would include a temperature sensor to monitor room conditions.
+This could be used to control a fan or give alerts if the temperature becomes uncomfortable.
+
+Third, I would add a reminder system using a buzzer. This could help users with things like taking medication or following a daily routine.
+I think these modules would work well together, and since they can be developed separately, it makes the overall system easier to expand in the future.
