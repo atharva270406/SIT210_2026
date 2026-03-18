@@ -9,7 +9,7 @@ char ssid[] = "iPhone";
 char pass[] = "12345678";
 
 WiFiClient client;
-unsigned long channel = 3296072;       // ThingSpeak channel number
+unsigned long channel = 3296072;         // ThingSpeak channel number
 const char* apiKey = "7VJAEBNXSCY5C4CM"; // ThingSpeak write API key
 
 DHT dht(DHTPIN, DHTTYPE);
@@ -30,14 +30,19 @@ void setup() {
 }
 
 void loop() {
-  float temp = dht.readTemperature();
-  int light = analogRead(lightSensor);
+  float temp = dht.readTemperature();   // read temperature
+  float hum = dht.readHumidity();       // read humidity
+  int light = analogRead(lightSensor);  // read light level
 
-  Serial.print("Temperature: "); Serial.println(temp);
+  // Print to serial monitor
+  Serial.print("Temperature: "); Serial.print(temp); Serial.println(" °C");
+  Serial.print("Humidity: "); Serial.print(hum); Serial.println(" %");
   Serial.print("Light level: "); Serial.println(light);
 
+  // Send to ThingSpeak
   ThingSpeak.setField(1, temp);   // field 1 = temperature
-  ThingSpeak.setField(2, light);  // field 2 = light
+  ThingSpeak.setField(4, hum);    // field 2 = humidity
+  ThingSpeak.setField(3, light);  // field 3 = light
   ThingSpeak.writeFields(channel, apiKey);
 
   delay(30000); // wait 30 seconds
