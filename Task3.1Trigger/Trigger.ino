@@ -3,88 +3,99 @@
 #include <Wire.h>
 #include <BH1750.h>
 
-// ---------------- WIFI ----------------
+// WiFi credentials
 #define WIFI_SSID "Telstra78A6A1"
 #define WIFI_PASSWORD "4jk6tmbw5vqrud3z"
 
-// ---------------- MQTT ----------------
+// MQTT details
 #define MQTT_SERVER "0eed77ea4cee4319b8c99954fa0bfaa6.s1.eu.hivemq.cloud"
-#define MQTT_PORT 8883   // 🔥 IMPORTANT CHANGE
+#define MQTT_PORT 8883
 #define MQTT_TOPIC "terrarium/light"
 
 #define MQTT_USER "hivemq.webclient.1774137069393"
 #define MQTT_PASSWORD "&R3yST1O0?XqpzL;ek.5"
 
-// ---------------- OBJECTS ----------------
-WiFiSSLClient wifiClient;
-PubSubClient mqttClient(wifiClient);
-BH1750 lightMeter;
+// objects
+WiFiSSLClient net;
+PubSubClient client(net);
+BH1750 lightSensor;
 
-// ---------------- LOGIC ----------------
+// logic variables
 float threshold = 100.0;
-bool isSunlight = false;
+bool sunlightFlag = false;
 
-// ---------------- CONNECT MQTT ----------------
-void connectMQTT() {
-  while (!mqttClient.connected()) {
-    Serial.println("Connecting to MQTT...");
+// connect to mqtt
+void connectMQTT()
+{
+  while (!client.connected())
+  {
+    Serial.print("MQTT connecting... ");
 
-    if (mqttClient.connect("ArduinoNano33IoT", MQTT_USER, MQTT_PASSWORD)) {
-      Serial.println("Connected to MQTT Broker!");
-    } else {
-      Serial.print("Failed, rc=");
-      Serial.print(mqttClient.state());
-      Serial.println(" retrying...");
+    if (client.connect("Nano33Client", MQTT_USER, MQTT_PASSWORD))
+    {
+      Serial.println("connected");
+    }
+    else
+    {
+      Serial.print("error ");
+      Serial.print(client.state());
+      Serial.println(" retrying");
       delay(5000);
     }
   }
 }
 
-// ---------------- SETUP ----------------
-void setup() {
+void setup()
+{
   Serial.begin(115200);
 
   Wire.begin();
-  lightMeter.begin();
+  lightSensor.begin();
 
+  // connect wifi
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
-  while (WiFi.status() != WL_CONNECTED) {
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    Serial.println("Trying WiFi...");
     delay(1000);
-    Serial.println("Connecting WiFi...");
   }
 
-  Serial.println("WiFi Connected");
+  Serial.println("WiFi OK");
 
-  mqttClient.setServer(MQTT_SERVER, MQTT_PORT);
+  client.setServer(MQTT_SERVER, MQTT_PORT);
 
   connectMQTT();
 }
 
-// ---------------- LOOP ----------------
-void loop() {
-
-  if (!mqttClient.connected()) {
+void loop()
+{
+  if (!client.connected())
+  {
     connectMQTT();
   }
 
-  mqttClient.loop();
+  client.loop();
 
-  float lux = lightMeter.readLightLevel();
+  float luxValue = lightSensor.readLightLevel();
 
-  Serial.print("Lux: ");
-  Serial.println(lux);
+  Serial.print("Light: ");
+  Serial.println(luxValue);
 
-  if (lux > threshold && !isSunlight) {
-    Serial.println("SUNLIGHT_ON");
-    mqttClient.publish(MQTT_TOPIC, "SUNLIGHT_ON");
-    isSunlight = true;
+  // sunlight detected
+  if (luxValue > threshold && sunlightFlag == false)
+  {
+    Serial.println("Sunlight ON");
+    client.publish(MQTT_TOPIC, "SUNLIGHT_ON");
+    sunlightFlag = true;
   }
 
-  else if (lux <= threshold && isSunlight) {
-    Serial.println("SUNLIGHT_OFF");
-    mqttClient.publish(MQTT_TOPIC, "SUNLIGHT_OFF");
-    isSunlight = false;
+  // sunlight stopped
+  if (luxValue <= threshold && sunlightFlag == true)
+  {
+    Serial.println("Sunlight OFF");
+    client.publish(MQTT_TOPIC, "SUNLIGHT_OFF");
+    sunlightFlag = false;
   }
 
   delay(3000);
