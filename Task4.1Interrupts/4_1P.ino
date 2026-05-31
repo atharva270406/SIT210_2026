@@ -1,90 +1,111 @@
- #include <Wire.h>
+#include <Wire.h>
 #include <BH1750.h>
 
-const int pirPin = 2;
-const int switchPin = 3;
-const int led1 = 6;
-const int led2 = 4;
+BH1750 lightMeter;
 
-BH1750 sensor;
+const int PIR_PIN = 2;
+const int SWITCH_PIN = 3;
+const int LED1 = 5;
+const int LED2 = 6;
 
-volatile bool motion = false;
-volatile bool button = false;
+volatile bool motionDetected = false;
+volatile bool switchChanged = false;
 
-bool lightsOn = false;
-unsigned long startTime = 0;
+const float DARK_THRESHOLD = 20.0;
 
-float threshold = 100;
-int duration = 8000;
-
-void motionDetected() {
-  motion = true;
+void PIR_ISR() {
+  motionDetected = true;
 }
 
-void switchPressed() {
-  button = true;
+void SWITCH_ISR() {
+  switchChanged = true;
 }
 
 void setup() {
   Serial.begin(9600);
 
-  pinMode(led1, OUTPUT);
-  pinMode(led2, OUTPUT);
-  pinMode(pirPin, INPUT);
-  pinMode(switchPin, INPUT_PULLUP);
+  while (!Serial);
+
+  pinMode(PIR_PIN, INPUT);
+  pinMode(SWITCH_PIN, INPUT_PULLUP);
+
+  pinMode(LED1, OUTPUT);
+  pinMode(LED2, OUTPUT);
+
+  digitalWrite(LED1, LOW);
+  digitalWrite(LED2, LOW);
 
   Wire.begin();
-  sensor.begin();
+  lightMeter.begin();
 
-  attachInterrupt(digitalPinToInterrupt(pirPin), motionDetected, RISING);
-  attachInterrupt(digitalPinToInterrupt(switchPin), switchPressed, FALLING);
+  attachInterrupt(
+    digitalPinToInterrupt(PIR_PIN),
+    PIR_ISR,
+    RISING
+  );
 
-  Serial.println("System started...");
+  attachInterrupt(
+    digitalPinToInterrupt(SWITCH_PIN),
+    SWITCH_ISR,
+    CHANGE
+  );
+
+  Serial.println("Linda Smart Lighting System Ready");
 }
 
 void loop() {
 
-  float light = sensor.readLightLevel();
+  // Manual slider switch control
+  if (switchChanged) {
 
-  if (motion) {
-    motion = false;
+    switchChanged = false;
 
-    Serial.print("Motion detected, light = ");
-    Serial.println(light);
+    if (digitalRead(SWITCH_PIN) == LOW) {
 
-    if (light < threshold) {
-      digitalWrite(led1, HIGH);
-      digitalWrite(led2, HIGH);
-      lightsOn = true;
-      startTime = millis();
-      Serial.println("Lights ON");
-    } else {
-      Serial.println("Enough light");
+      digitalWrite(LED1, HIGH);
+      digitalWrite(LED2, HIGH);
+
+      Serial.println("Slider switch ON -> Lights ON");
+    }
+    else {
+
+      digitalWrite(LED1, LOW);
+      digitalWrite(LED2, LOW);
+
+      Serial.println("Slider switch OFF -> Lights OFF");
     }
   }
 
-  if (button) {
-    button = false;
+  // PIR motion detection
+  if (motionDetected) {
 
-    lightsOn = !lightsOn;
+    motionDetected = false;
 
-    digitalWrite(led1, lightsOn);
-    digitalWrite(led2, lightsOn);
+    float lux = lightMeter.readLightLevel();
 
-    Serial.println("Switch pressed");
+    Serial.print("Motion detected. Light level = ");
+    Serial.print(lux);
+    Serial.println(" lx");
 
-    if (lightsOn) {
-      startTime = millis();
+    // Only auto-turn-on when dark
+    if (lux < DARK_THRESHOLD) {
+
+      digitalWrite(LED1, HIGH);
+      digitalWrite(LED2, HIGH);
+
+      Serial.println("Dark environment -> Lights ON for 5 seconds");
+
+      delay(5000);
+
+      // Don't turn off if slider is still ON
+      if (digitalRead(SWITCH_PIN) == HIGH) {
+        digitalWrite(LED1, LOW);
+        digitalWrite(LED2, LOW);
+        Serial.println("5 seconds elapsed -> Lights OFF");
+      }
+    }
+    else {
+      Serial.println("Bright environment -> Lights remain OFF");
     }
   }
-
-  if (lightsOn && millis() - startTime > duration) {
-    digitalWrite(led1, LOW);
-    digitalWrite(led2, LOW);
-    lightsOn = false;
-
-    Serial.println("Lights OFF");
-  }
-
-  delay(1000);
 }
